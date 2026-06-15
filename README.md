@@ -40,11 +40,23 @@ npm install -g @opencode/opencode
 
 ## Quick Start
 
+### Linux / macOS
+
 ```bash
-# Clone or copy these skills into your project or global config
+# Copy skills to your global opencode config
 cp -r skills ~/.config/opencode/skills
 
-# Run opencode and the agent will automatically discover them
+# Run opencode — skills auto-discover
+opencode
+```
+
+### Windows (PowerShell)
+
+```powershell
+# Copy skills to your global opencode config
+Copy-Item -Path "skills\*" -Destination "$env:USERPROFILE\.config\opencode\skills\" -Recurse
+
+# Run opencode — skills auto-discover
 opencode
 ```
 
@@ -91,7 +103,6 @@ You don't need to manually invoke skills — the agent loads them automatically 
 
 | Skill | Description |
 |---|---|
-| **bcom-exam-prep** | Generate B.Com exam prep materials (notes, question banks, HTML study sites) from a syllabus |
 | **canvas-design** | Create beautiful visual art in .png and .pdf using design philosophy |
 | **doc-coauthoring** | Structured workflow for co-authoring documentation, proposals, and specs |
 | **event-planning** | Plan events from birthday dinners to weddings — venues, vendors, timelines, budgets |
