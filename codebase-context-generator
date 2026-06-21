@@ -1,0 +1,258 @@
+---
+name: project-context-generator
+description: >
+  Generates a comprehensive PROJECT_CONTEXT.md file by deeply exploring a codebase and
+  compiling exhaustive documentation covering tech stack, entities, API routes, frontend
+  routes, environment variables, conventions, and patterns. Use this skill whenever the
+  user asks to "document my codebase", "generate project context", "create a PROJECT_CONTEXT.md",
+  "map out my project", or provides a path and asks for a full project reference file.
+  Also trigger when the user says things like "help me understand this codebase" combined
+  with a file path, or "write docs for my project". Always use this skill rather than
+  improvising — it ensures nothing is missed and no details are hallucinated.
+---
+
+# Project Context Generator
+
+Produces a single `PROJECT_CONTEXT.md` at the project root that serves as the canonical
+reference for the entire codebase — accurate enough to onboard a new developer or give
+an AI assistant complete context to work on any part of the project.
+
+---
+
+## Phase 1: Discover & Plan
+
+Before reading any files, map the project so you know exactly what to read.
+
+```bash
+# Full directory tree (exclude node_modules, .git, dist, build, __pycache__, .venv)
+find <path> \
+  -not \( -path "*/node_modules/*" -o -path "*/.git/*" \
+          -o -path "*/dist/*" -o -path "*/build/*" \
+          -o -path "*/__pycache__/*" -o -path "*/.venv/*" \) \
+  | sort
+```
+
+From the tree, identify:
+- **Runtime**: Node/Python/Go/etc.
+- **Framework hints**: `nest-cli.json` → NestJS; `manage.py` → Django; `go.mod` → Go; etc.
+- **Frontend root**: `client/`, `frontend/`, `web/`, `src/` (look for `vite.config.*` or `next.config.*`)
+- **Backend root**: `server/`, `api/`, `backend/`, or project root for monoliths
+- **Key file lists** (build these before reading anything):
+  - Manifests: `package.json`, `pyproject.toml`, `go.mod`, `Cargo.toml`
+  - Entry points: `main.ts`, `main.py`, `cmd/main.go`, `index.ts`, `app.module.ts`
+  - Entity/model files: `*.entity.ts`, `models.py`, `schema.prisma`, `*.model.ts`
+  - Controller/route files: `*.controller.ts`, `routes/*.py`, `handlers/*.go`, `*.router.ts`
+  - Frontend router: `App.tsx`, `router/index.ts`, `routes.tsx`, `_app.tsx`
+  - Context/providers: `*Context.tsx`, `*Provider.tsx`, `store/`, `*.slice.ts`
+  - API client: `api.ts`, `apiClient.ts`, `services/`, `hooks/use*.ts` (fetch hooks)
+  - Config: `.env*`, `vite.config.*`, `tailwind.config.*`, `tsconfig.json`, `jest.config.*`
+  - Docs/setup: `README.md`, `seed.ts`, `seed.py`, `docker-compose.yml`, `Dockerfile`, `.github/workflows/`
+
+---
+
+## Phase 2: Read Everything — No Skipping
+
+Read **every file completely**. Do not summarize, infer, or guess. If a file is unreadable, note it explicitly.
+
+### 2a. Manifests & Config
+- Parse all dependency names **and versions** from `package.json` / `pyproject.toml` / `go.mod`
+- Note `scripts` section from `package.json` (dev, build, test, seed commands)
+- Read all `.env`, `.env.example`, `.env.development` files in full — capture every variable name and its purpose/default
+
+### 2b. Entry Points & App Bootstrap
+- Read `main.ts` / `main.py` / `app.module.ts` — note port, global middleware, CORS config, module imports
+
+### 2c. Entities / Models / Schema
+For **each** entity/model file, extract:
+- Table/collection name
+- Every field: exact name, type, nullable, default, unique, indexed
+- Relations: type (OneToMany, ManyToOne, etc.), target entity, cascade rules
+- Decorators / validators
+
+For Prisma: read `schema.prisma` entirely and extract every model block.
+
+### 2d. Controllers / Routes / Handlers
+For **each** route file, extract:
+- HTTP method (GET/POST/PUT/PATCH/DELETE)
+- Exact path (including base prefix from module or router registration)
+- Auth guard / role decorator (e.g., `@Roles('admin')`, `@UseGuards(JwtAuthGuard)`)
+- Request body / query params shape (from DTO files if present — read those too)
+- Brief description of what the handler does
+
+### 2e. Frontend Router
+- Read every route definition: path, component, lazy/eager, role/auth guard
+- Note nested layouts or protected route wrappers
+
+### 2f. Context / State / Store
+- For each provider/context: what state it holds, what actions it exposes
+- For Redux/Zustand slices: slice name, state shape, actions
+
+### 2g. API Client / Service Layer
+- Base URL config, how auth token is attached (headers, interceptors)
+- List every API method: function name → HTTP method + path it calls
+
+### 2h. Auth System
+- Strategy: JWT / session / OAuth / API key
+- Token storage: localStorage / cookie / memory
+- How roles/permissions work
+
+### 2i. README, Seeds, Deployment
+- Read README fully — extract setup steps, env requirements, run commands
+- Read seed scripts — what data they create
+- Read `docker-compose.yml`, `Dockerfile`, CI workflows — extract deployment steps
+
+---
+
+## Phase 3: Compile PROJECT_CONTEXT.md
+
+Write to `<project_root>/PROJECT_CONTEXT.md`. Use this exact structure:
+
+```markdown
+# PROJECT_CONTEXT.md
+> Auto-generated on <date>. Read every source file — no hallucinations.
+
+---
+
+## 1. Project Overview
+[What the app does, target users, high-level architecture in 3–5 sentences]
+
+---
+
+## 2. Tech Stack
+| Layer | Technology | Version |
+|-------|-----------|---------|
+| Runtime | Node.js | 20.x |
+| Framework | NestJS | 10.3.2 |
+| ORM | TypeORM | 0.3.17 |
+| Database | PostgreSQL | 15 |
+| Frontend | React | 18.2.0 |
+| Bundler | Vite | 5.0.0 |
+| Styling | Tailwind CSS | 3.4.1 |
+| Auth | JWT + Passport | ... |
+[Add ALL relevant libraries with exact versions from manifest]
+
+---
+
+## 3. Directory Structure
+[Paste the filtered tree from Phase 1, annotated with brief inline comments]
+
+---
+
+## 4. Backend Reference
+
+### 4a. Database Entities
+#### `EntityName` (`table_name`)
+| Column | Type | Nullable | Default | Notes |
+|--------|------|----------|---------|-------|
+| id | uuid | No | gen_random_uuid() | PK |
+| ... | | | | |
+
+**Relations:**
+- `users` → OneToMany → `Order` (cascade: delete)
+
+[Repeat for EVERY entity]
+
+### 4b. API Endpoints
+| Method | Path | Auth | Roles | Description |
+|--------|------|------|-------|-------------|
+| POST | /auth/login | No | - | Issue JWT |
+| GET | /users | Yes | admin | List all users |
+[List EVERY endpoint — count must match actual controllers]
+
+### 4c. Auth System
+[JWT/session strategy, token fields, role model, guard usage]
+
+### 4d. DTOs & Validation
+[Key request/response shapes — from actual DTO files]
+
+---
+
+## 5. Frontend Reference
+
+### 5a. Routes
+| Path | Component | Auth Required | Roles |
+|------|-----------|---------------|-------|
+| / | HomePage | No | - |
+| /dashboard | Dashboard | Yes | user, admin |
+[Every route]
+
+### 5b. Context / State Management
+#### `AuthContext`
+- **State:** `user`, `token`, `isLoading`
+- **Actions:** `login()`, `logout()`, `refreshToken()`
+
+[Every context/slice]
+
+### 5c. API Client
+- **Base URL:** `import.meta.env.VITE_API_URL`
+- **Auth:** Bearer token in `Authorization` header via Axios interceptor
+
+| Function | Method | Endpoint |
+|----------|--------|----------|
+| `getUsers()` | GET | /users |
+[Every API client function]
+
+---
+
+## 6. Environment Variables
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| DATABASE_URL | Yes | - | PostgreSQL connection string |
+| JWT_SECRET | Yes | - | Secret for signing tokens |
+[Every variable from .env.example or actual .env files]
+
+---
+
+## 7. Development Setup
+[Exact commands from README / package.json scripts to install, seed, and run]
+
+---
+
+## 8. Deployment
+[Docker, CI/CD, cloud target — from Dockerfile / docker-compose / workflow files]
+
+---
+
+## 9. Code Conventions
+[Naming, file structure patterns, DTO conventions, error handling — inferred from reading actual code]
+
+---
+
+## 10. Common Patterns
+[Recurring patterns seen in the code: how guards are applied, how services are injected, how API hooks are built, etc.]
+```
+
+---
+
+## Rules (Non-Negotiable)
+
+1. **No hallucinations.** Every field name, type, route, and env var must come from an actual file you read. If you haven't read a file, don't describe its contents.
+2. **Read every file completely.** No partial reads. If a file is long, scroll through all of it.
+3. **Verify counts.** Before writing "12 entities", count them. Before writing "34 endpoints", count them.
+4. **Exact types.** `varchar(255)` not "string". `uuid` not "id". `boolean DEFAULT false` not "a flag".
+5. **Every route.** If there are 7 controllers with 3–6 endpoints each, list all ~30 routes individually.
+6. **Note gaps explicitly.** If a `.env` variable appears in code but not in `.env.example`, flag it as `⚠️ undocumented`.
+7. **Write to disk.** Save the final file to `<project_root>/PROJECT_CONTEXT.md` using bash or file tools.
+
+---
+
+## Handling Large Codebases
+
+If the project has >50 entity/model files or >100 route handlers:
+- Process entities in alphabetical batches (A–M, N–Z)
+- Write partial sections to a temp file as you go, then assemble at the end
+- Track a running count of entities and routes as you discover them
+
+If the project is a monorepo:
+- Document each package/app separately under a `## Package: <name>` heading
+- Note inter-package dependencies explicitly
+
+---
+
+## Output Confirmation
+
+After writing the file, confirm to the user:
+- Path written: `<project_root>/PROJECT_CONTEXT.md`
+- Counts: X entities, Y API endpoints, Z frontend routes, W env variables
+- Any files that could not be read (permissions, binary, etc.)
+- Any gaps or inconsistencies found (e.g., env vars used but not documented)
